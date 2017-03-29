@@ -103,6 +103,62 @@ function transformPoint (matrix, point) {
   };
 }
 
+function multiplyMatrix (m0, m1) {
+  return {
+    a: m0.a * m1.a + m0.c * m1.b, // + m0.e * 0
+    b: m0.b * m1.a + m0.d * m1.b, // + m0.f * 0
+    c: m0.a * m1.c + m0.c * m1.d, // + m0.e * 0
+    d: m0.b * m1.c + m0.d * m1.d, // + m0.f * 0
+    e: m0.a * m1.e + m0.c * m1.f + m0.e, // * 1
+    f: m0.b * m1.e + m0.d * m1.f + m0.f  // * 1
+  };
+}
+
+function applyTranslation (element, dx, dy, deep) {
+  if (!deep) {
+    // Just add the translation to the existing matrix (assuming it exists)
+    let matrix = element.transform
+      ? element.transform.baseVal.consolidate().matrix : IDENTITY_MATRIX;
+    matrix = multiplyMatrix(matrix, { a: 1, b: 0, c: 0, d: 1, e: dx, f: dy });
+    element.setAttribute('transform', 'matrix(' + matrix.a + ',' + matrix.b + ',' +
+                                                  matrix.c + ',' + matrix.d + ',' +
+                                                  matrix.e + ',' + matrix.f + ')');
+  } else {
+    // Recursively apply the translation to elements' native coordinates
+    /*
+    let matrix = element.transform
+      ? element.transform.baseVal.consolidate().matrix : IDENTITY_MATRIX;
+    let newDelta = transformPoint(matrix, { x: dx, y: dy });
+    dx = newDelta.x;
+    dy = newDelta.y;
+    */
+
+    if (element.hasAttribute('x') && element.hasAttribute('y')) {
+      element.setAttribute('x', parseInt(element.getAttribute('x')) + dx);
+      element.setAttribute('y', parseInt(element.getAttribute('y')) + dy);
+    } else if (element.hasAttribute('cx') && element.hasAttribute('cy')) {
+      element.setAttribute('cx', parseInt(element.getAttribute('x')) + dx);
+      element.setAttribute('cy', parseInt(element.getAttribute('y')) + dy);
+    } else if (element.hasAttribute('d')) {
+      let normalizedPath = element.getPathData({ normalize: true });
+      normalizedPath.forEach(command => {
+        command.values = command.values.map((value, index) => {
+          return index % 2 === 0 ? value + dx : value + dy;
+        });
+      });
+      element.setPathData(normalizedPath);
+    }
+    if (element.children.length > 0) {
+      Array.from(element.children).forEach(child => {
+        applyTranslation(child, dx, dy, true);
+      });
+    }
+  }
+}
+
 export default {
-  getBoundingRect
+  getBoundingRect,
+  applyTranslation,
+  transformPoint,
+  multiplyMatrix
 };

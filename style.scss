@@ -1,7 +1,7 @@
 #container {
   position: absolute;
-  top: 0em;
-  left: 0em;
+  top: 1em;
+  left: 1em;
   right: 1em;
   bottom: 1em;
 }
@@ -9,8 +9,11 @@ svg {
   position: absolute;
   top: 0px;
   left: 0px;
-  pointer-events: none;
-  > * {
-    pointer-events: painted;
+  &#anchorPoints,
+  &#overlay {
+    pointer-events: none;
+    > * {
+      pointer-events: painted;
+    }
   }
 }
