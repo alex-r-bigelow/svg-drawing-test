@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
+    <title>svg-drawing-test</title>
+  </head>
+  <body>
+    <div id="container">
+      <svg id="content">
+        <path d="M-100,-100L0,-50L100,-100Q0,200,-100,-100Z"
+              transform="translate(400, 400)"></path>
+        <path d="M-100,-100L0,-50L100,-100Q0,200,-100,-100Z"
+              transform="translate(600, 400) rotate(45, 0, 0)"></path>
+      </svg>
+      <svg id="anchorPoints"></svg>
+      <svg id="overlay">
+        <path id="anchorPoint" d="M0,-1L0,1M0,10A10,10,100,1,0,0,-10A10,10,100,1,0,0,10ZM0,-10L0,-15M-10,0L-15,0M0,10L0,15M10,0L15,0" transform="translate(100,100)"></path>
+        <rect id="boundingRect"></rect>
+        <rect id="rubberBand"></rect>
+      </svg>
+    </div>
+  </body>
+</html>

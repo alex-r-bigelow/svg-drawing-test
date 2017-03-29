@@ -1,0 +1,94 @@
+#overlay {
+  #boundingRect,
+  #anchorPoint,
+  .handle rect {
+    stroke: blue;
+    stroke-width: 1px;
+  }
+  #boundingRect {
+    fill: none;
+  }
+  #anchorPoint {
+    fill: transparent;
+    cursor: -webkit-grab;
+    cursor: -moz-grab;
+    cursor: grab;
+    &.dragging {
+      cursor: -webkit-grabbing;
+      cursor: -moz-grabbing;
+      cursor: grabbing;
+    }
+  }
+  .handle {
+    rect {
+      fill: white;
+    }
+    circle {
+      fill: transparent;
+    }
+    &.nw {
+      rect {
+        cursor: nwse-resize;
+      }
+      circle {
+        cursor: url('../img/nw-rotate.png') 12 12, nesw-resize;
+      }
+    }
+    &.n {
+      rect {
+        cursor: ns-resize;
+      }
+      circle {
+        cursor: url('../img/n-rotate.png') 14 14, ew-resize;
+      }
+    }
+    &.ne {
+      rect {
+        cursor: nesw-resize;
+      }
+      circle {
+        cursor: url('../img/ne-rotate.png') 12 12, nwse-resize;
+      }
+    }
+    &.e {
+      rect {
+        cursor: ew-resize;
+      }
+      circle {
+        cursor: url('../img/e-rotate.png') 14 14, ns-resize;
+      }
+    }
+    &.sw {
+      rect {
+        cursor: nesw-resize;
+      }
+      circle {
+        cursor: url('../img/sw-rotate.png') 12 12, nwse-resize;
+      }
+    }
+    &.s {
+      rect {
+        cursor: ns-resize;
+      }
+      circle {
+        cursor: url('../img/s-rotate.png') 14 14, ew-resize;
+      }
+    }
+    &.se {
+      rect {
+        cursor: nwse-resize;
+      }
+      circle {
+        cursor: url('../img/se-rotate.png') 12 12, nesw-resize;
+      }
+    }
+    &.w {
+      rect {
+        cursor: ew-resize;
+      }
+      circle {
+        cursor: url('../img/w-rotate.png') 14 14, ns-resize;
+      }
+    }
+  }
+}
