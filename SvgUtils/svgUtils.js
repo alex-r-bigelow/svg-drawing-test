@@ -1,7 +1,98 @@
 import * as d3 from 'd3';
 import '../node_modules/path-data-polyfill.js/path-data-polyfill.js';
 
+const A_TO_F = ['a', 'b', 'c', 'd', 'e', 'f'];
 const IDENTITY_MATRIX = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+const DATA_RULER_NAMESPACE = 'https://alex-r-bigelow.github.io/#dataRuler';
+
+function transformPoint (matrix, point) {
+  return {
+    x: matrix.a * point.x + matrix.c * point.y + matrix.e,
+    y: matrix.b * point.x + matrix.d * point.y + matrix.f
+  };
+}
+
+function multiplyMatrix (m0, m1) {
+  return {
+    a: m0.a * m1.a + m0.c * m1.b, // + m0.e * 0
+    b: m0.b * m1.a + m0.d * m1.b, // + m0.f * 0
+    c: m0.a * m1.c + m0.c * m1.d, // + m0.e * 0
+    d: m0.b * m1.c + m0.d * m1.d, // + m0.f * 0
+    e: m0.a * m1.e + m0.c * m1.f + m0.e, // * 1
+    f: m0.b * m1.e + m0.d * m1.f + m0.f  // * 1
+  };
+}
+
+function invertMatrix (m) {
+  let det = m.a * m.d - m.c * m.b;
+  let result = {
+    a: m.d,
+    b: -m.b,
+    c: -m.c,
+    d: m.a,
+    e: m.c * m.f - m.e * m.d,
+    f: m.e * m.b - m.a * m.f
+  };
+  Object.keys(result).forEach(k => {
+    result[k] = result[k] / det;
+  });
+  return result;
+}
+
+function getTranslationMatrix (dx, dy) {
+  return { a: 1, b: 0, c: 0, d: 1, e: dx, f: dy };
+}
+
+function getAncestralMatrix (element) {
+  if (element.parentNode.tagName.toLowerCase() === 'svg') {
+    return IDENTITY_MATRIX;
+  }
+  return multiplyMatrix(getAncestralMatrix(element.parentNode.parentNode), getMatrix(element.parentNode));
+}
+
+function getMatrix (element) {
+  return element.transform ? element.transform.baseVal.consolidate().matrix : IDENTITY_MATRIX;
+}
+
+function constructMatrixSubString (matrix) {
+  return A_TO_F.map(k => matrix[k]).join(', ');
+}
+
+function parseMatrixSubString (value) {
+  if (!value) {
+    return IDENTITY_MATRIX;
+  }
+  let values = value.split(', ');
+  let matrix = {};
+  A_TO_F.forEach((k, i) => {
+    matrix[k] = parseFloat(values[i]);
+  });
+  return matrix;
+}
+
+function setMatrix (element, m) {
+  d3.select(element).attr('transform', 'matrix(' + constructMatrixSubString(m) + ')');
+}
+
+function getPreAnchorMatrix (element) {
+  return parseMatrixSubString(element.getAttributeNS(DATA_RULER_NAMESPACE, 'preAnchorMatrix'));
+}
+
+function setPreAnchorMatrix (element, matrix) {
+  element.setAttributeNS(DATA_RULER_NAMESPACE, 'preAnchorMatrix', constructMatrixSubString(matrix));
+}
+
+function getPostAnchorMatrix (element) {
+  return parseMatrixSubString(element.getAttributeNS(DATA_RULER_NAMESPACE, 'postAnchorMatrix'));
+}
+
+function setPostAnchorMatrix (element, matrix) {
+  element.setAttributeNS(DATA_RULER_NAMESPACE, 'postAnchorMatrix', constructMatrixSubString(matrix));
+}
+
+function elementToRootMatrix (element) {
+  return multiplyMatrix(getAncestralMatrix(element), getMatrix(element));
+}
 
 function getBoundingRect (element) {
   let boundingRect = {};
@@ -23,13 +114,13 @@ function getBoundingRect (element) {
 function getAllPoints (element) {
   let tagName = element.tagName ? element.tagName.toLowerCase() : null;
   let points;
-  let matrix = element.transform
-    ? element.transform.baseVal.consolidate().matrix : IDENTITY_MATRIX;
+  let matrix = getMatrix(element);
 
   if (element instanceof Array) {
     points = element.reduce((acc, el) => acc.concat(getAllPoints(el)), []);
   } else if (element.children.length > 0) {
-    points = Array.from(element.children).reduce((acc, el) => acc.concat(getAllPoints(el)), []);
+    points = Array.from(element.children)
+      .reduce((acc, el) => acc.concat(getAllPoints(el)), []);
   } else if (tagName === 'rect') {
     points = getRectPoints(element);
   } else if (tagName === 'circle') {
@@ -37,25 +128,16 @@ function getAllPoints (element) {
   } else if (tagName === 'path') {
     points = getPathPoints(element);
   } else {
-    // TODO: getBoundingClientRect() gets the boundary in
-    // global coordinates; we need to invert the stack
-    // of ancestral transformations
+    // getBoundingClientRect() gets the boundary in global coordinates; we need
+    // to invert the stack of transformations. TODO: deal with the case that the
+    // root SVG element isn't positioned at 0,0 in the web page
     points = getCorners(element.getBoundingClientRect());
-    // matrix = ... something...
+    matrix = invertMatrix(elementToRootMatrix(element));
   }
 
   points = points.map(point => transformPoint(matrix, point));
 
   return points;
-}
-
-function getCorners (bounds) {
-  return [
-    { x: bounds.left, y: bounds.top },
-    { x: bounds.left, y: bounds.bottom },
-    { x: bounds.right, y: bounds.top },
-    { x: bounds.right, y: bounds.bottom }
-  ];
 }
 
 function getRectPoints (element) {
@@ -96,69 +178,28 @@ function getPathPoints (element) {
   return points;
 }
 
-function transformPoint (matrix, point) {
-  return {
-    x: matrix.a * point.x + matrix.c * point.y + matrix.e,
-    y: matrix.b * point.x + matrix.d * point.y + matrix.f
-  };
-}
-
-function multiplyMatrix (m0, m1) {
-  return {
-    a: m0.a * m1.a + m0.c * m1.b, // + m0.e * 0
-    b: m0.b * m1.a + m0.d * m1.b, // + m0.f * 0
-    c: m0.a * m1.c + m0.c * m1.d, // + m0.e * 0
-    d: m0.b * m1.c + m0.d * m1.d, // + m0.f * 0
-    e: m0.a * m1.e + m0.c * m1.f + m0.e, // * 1
-    f: m0.b * m1.e + m0.d * m1.f + m0.f  // * 1
-  };
-}
-
-function applyTranslation (element, dx, dy, deep) {
-  if (!deep) {
-    // Just add the translation to the existing matrix (assuming it exists)
-    let matrix = element.transform
-      ? element.transform.baseVal.consolidate().matrix : IDENTITY_MATRIX;
-    matrix = multiplyMatrix(matrix, { a: 1, b: 0, c: 0, d: 1, e: dx, f: dy });
-    element.setAttribute('transform', 'matrix(' + matrix.a + ',' + matrix.b + ',' +
-                                                  matrix.c + ',' + matrix.d + ',' +
-                                                  matrix.e + ',' + matrix.f + ')');
-  } else {
-    // Recursively apply the translation to elements' native coordinates
-    /*
-    let matrix = element.transform
-      ? element.transform.baseVal.consolidate().matrix : IDENTITY_MATRIX;
-    let newDelta = transformPoint(matrix, { x: dx, y: dy });
-    dx = newDelta.x;
-    dy = newDelta.y;
-    */
-
-    if (element.hasAttribute('x') && element.hasAttribute('y')) {
-      element.setAttribute('x', parseInt(element.getAttribute('x')) + dx);
-      element.setAttribute('y', parseInt(element.getAttribute('y')) + dy);
-    } else if (element.hasAttribute('cx') && element.hasAttribute('cy')) {
-      element.setAttribute('cx', parseInt(element.getAttribute('x')) + dx);
-      element.setAttribute('cy', parseInt(element.getAttribute('y')) + dy);
-    } else if (element.hasAttribute('d')) {
-      let normalizedPath = element.getPathData({ normalize: true });
-      normalizedPath.forEach(command => {
-        command.values = command.values.map((value, index) => {
-          return index % 2 === 0 ? value + dx : value + dy;
-        });
-      });
-      element.setPathData(normalizedPath);
-    }
-    if (element.children.length > 0) {
-      Array.from(element.children).forEach(child => {
-        applyTranslation(child, dx, dy, true);
-      });
-    }
-  }
+function getCorners (bounds) {
+  return [
+    { x: bounds.left, y: bounds.top },
+    { x: bounds.left, y: bounds.bottom },
+    { x: bounds.right, y: bounds.top },
+    { x: bounds.right, y: bounds.bottom }
+  ];
 }
 
 export default {
-  getBoundingRect,
-  applyTranslation,
+  IDENTITY_MATRIX,
   transformPoint,
-  multiplyMatrix
+  multiplyMatrix,
+  invertMatrix,
+  getTranslationMatrix,
+  getAncestralMatrix,
+  getMatrix,
+  setMatrix,
+  getPreAnchorMatrix,
+  setPreAnchorMatrix,
+  getPostAnchorMatrix,
+  setPostAnchorMatrix,
+  elementToRootMatrix,
+  getBoundingRect
 };

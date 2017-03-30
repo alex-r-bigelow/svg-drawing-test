@@ -2,6 +2,7 @@ import * as d3 from 'd3';
 import jQuery from 'jquery';
 
 import Selection from './Selection/selection';
+import preferences from './preferences.json';
 
 import './style.scss';
 
@@ -9,6 +10,8 @@ class Controller {
   constructor () {
     window.onload = () => { this.setup(); };
     window.onresize = () => { this.resize(); };
+
+    this.preferences = preferences;
   }
 
   setup () {

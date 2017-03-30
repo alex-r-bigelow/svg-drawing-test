@@ -6,7 +6,7 @@
   </head>
   <body>
     <div id="container">
-      <svg id="content">
+      <svg id="content" xmlns="http://www.w3.org/2000/svg" xmlns:dataruler="https://alex-r-bigelow.github.io/#dataRuler">
         <path d="M-100,-100L0,-50L100,-100Q0,200,-100,-100Z"
               transform="translate(400, 400)"></path>
         <path d="M-100,-100L0,-50L100,-100Q0,200,-100,-100Z"
@@ -14,8 +14,9 @@
       </svg>
       <svg id="anchorPoints"></svg>
       <svg id="overlay">
-        <path id="anchorPoint" d="M0,-1L0,1M0,10A10,10,100,1,0,0,-10A10,10,100,1,0,0,10ZM0,-10L0,-15M-10,0L-15,0M0,10L0,15M10,0L15,0"></path>
         <rect id="boundingRect"></rect>
+        <g id="handles"></g>
+        <path id="anchorPoint" d="M0,-1L0,1M0,10A10,10,100,1,0,0,-10A10,10,100,1,0,0,10ZM0,-10L0,-15M-10,0L-15,0M0,10L0,15M10,0L15,0"></path>
         <rect id="rubberBand"></rect>
       </svg>
     </div>

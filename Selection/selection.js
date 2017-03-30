@@ -113,27 +113,37 @@ class Selection {
 
   moveAnchor () {
     if (this.cachedAnchor) {
-      // We're moving the anchor for a list of elements; we don't want changes
-      // to temporary selections to be stored in the DOM. Just update the
-      // temporary anchor:
+      /*
+        We're moving the anchor for a list of elements; we don't want changes
+        to temporary selections to be stored in the DOM. Just update the
+        temporary anchor:
+      */
       this.cachedAnchor.x += this.drag.x - this.drag.x0;
       this.cachedAnchor.y += this.drag.y - this.drag.y0;
     } else {
-      // The anchor's transform attribute will be automatically cleared, so we
-      // don't have to worry about that. Instead, we want to apply the *opposite*
-      // translation deeply (to native coordinates all down the tree, but leaving
-      // descendants' transform tags intact), and apply the *dragged* translation
-      // just to the selectedElements
-      this.selectedElements.forEach(element => {
-        SvgUtils.applyTranslation(element,
-          -(this.drag.x - this.drag.x0),
-          -(this.drag.y - this.drag.y0),
-          true);
-        SvgUtils.applyTranslation(element,
-          (this.drag.x - this.drag.x0),
-          (this.drag.y - this.drag.y0),
-          false);
-      });
+      /*
+        Math for moving the anchor point for a single element:
+
+        M = anchor movement transformation (what we got from dragging)
+        B = pre-anchor transform (need to update)
+        A = post-anchor transform (need to update)
+        T = element's native transform
+
+        B_1 = M * B_0
+        A_1 = inv(B_1) * T
+      */
+      let element = this.selectedElements[0];
+      let M = SvgUtils.getTranslationMatrix(
+        (this.drag.x - this.drag.x0),
+        (this.drag.y - this.drag.y0));
+      let B_0 = SvgUtils.getPreAnchorMatrix(element);
+      let T = SvgUtils.getMatrix(element);
+
+      let B_1 = SvgUtils.multiplyMatrix(M, B_0);
+      let A_1 = SvgUtils.multiplyMatrix(SvgUtils.invertMatrix(B_1), T);
+
+      SvgUtils.setPreAnchorMatrix(element, B_1);
+      SvgUtils.setPostAnchorMatrix(element, A_1);
     }
   }
 
@@ -260,7 +270,7 @@ class Selection {
           });
 
         // Draw the handles
-        let handles = overlay.selectAll('.handle')
+        let handles = overlay.select('#handles').selectAll('.handle')
           .data(this.getHandles(boundingRect), d => d.class);
         handles.exit().remove();
         let handlesEnter = handles.enter().append('g')
@@ -293,21 +303,24 @@ class Selection {
         // Draw the anchor point
         let anchorTransform = null;
         if (this.selectedElements.length === 1) {
-          // Put the anchor at the 0,0 coordinate of the selected element's
-          // coordinate system; in a sense, this is how the anchor is saved for
-          // each object
-          if (this.selectedElements[0].transform) {
-            let matrix = this.selectedElements[0].transform.baseVal.consolidate().matrix;
-            let origin = SvgUtils.transformPoint(matrix, { x: 0, y: 0 });
-            anchorTransform = 'translate(' + origin.x + ',' + origin.y + ')';
-          } else {
-            anchorTransform = '';
-          }
+          /*
+            Math involved in computing the anchor point's position
+            in global coordinates:
+
+            P = consolidated ancestral transformations
+            B = pre-anchor transform
+          */
+          let element = this.selectedElements[0];
+          let P = SvgUtils.getAncestralMatrix(element);
+          let B = SvgUtils.getPreAnchorMatrix(element);
+          let anchor = SvgUtils.transformPoint(SvgUtils.multiplyMatrix(P, B), { x: 0, y: 0 });
+
+          anchorTransform = 'translate(' + anchor.x + ',' + anchor.y + ')';
           this.cachedAnchor = null;
         } else if (this.selectedElements.length > 1) {
           // There isn't an implicit coordinate system when multiple objects are
           // selected; instead start in the middle of the selection, and cache
-          // the result until the selection is reset - then the anchor will be
+          // the result until the selection is changed - then the anchor will be
           // lost
           if (!this.cachedAnchor) {
             this.cachedAnchor = {
@@ -331,7 +344,7 @@ class Selection {
             this.render();
           }).on('mouseup', () => { this.finishDrag(); });
       }
-    }, 100)();
+    }, 50)();
   }
 }
 

@@ -1,0 +1,7 @@
+{
+  "elementsProtectedFromAutoConversionToPaths": {
+    "text": true,
+    "rect": false,
+    "circle": false
+  }
+}
