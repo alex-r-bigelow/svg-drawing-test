@@ -44,7 +44,8 @@ function getTranslationMatrix (dx, dy) {
 }
 
 function getAncestralMatrix (element) {
-  if (element.parentNode.tagName.toLowerCase() === 'svg') {
+  if (element.tagName.toLowerCase() === 'svg' ||
+      element.parentNode.tagName.toLowerCase() === 'svg') {
     return IDENTITY_MATRIX;
   }
   return multiplyMatrix(getAncestralMatrix(element.parentNode.parentNode), getMatrix(element.parentNode));
@@ -94,9 +95,25 @@ function elementToRootMatrix (element) {
   return multiplyMatrix(getAncestralMatrix(element), getMatrix(element));
 }
 
-function getBoundingRect (element) {
+function getBoundingRect (elementOrElements) {
   let boundingRect = {};
-  getAllPoints(element).forEach(point => {
+
+  let ancestralMatrix;
+  if (elementOrElements instanceof Array) {
+    let parentNode = elementOrElements[0].parentNode;
+    let elementsHaveSameParent = elementOrElements.reduce((acc, element) => {
+      return acc && element.parentNode === parentNode;
+    }, true);
+    if (!elementsHaveSameParent) {
+      throw new Error('Attempted to get a bounding rect for elements with different parent nodes');
+    }
+    ancestralMatrix = getAncestralMatrix(elementOrElements[0]);
+  } else {
+    ancestralMatrix = getAncestralMatrix(elementOrElements);
+  }
+
+  getAllPoints(elementOrElements).forEach(point => {
+    point = transformPoint(ancestralMatrix, point);
     boundingRect.left = boundingRect.left === undefined
       ? point.x : Math.min(boundingRect.left, point.x);
     boundingRect.top = boundingRect.top === undefined

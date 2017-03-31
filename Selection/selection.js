@@ -48,7 +48,8 @@ class Selection {
         }
         this.render();
       })
-      .on('mouseup', () => { this.finishDrag(); });
+      .on('mouseup', () => { this.finishDrag(); })
+      .on('dblclick', () => { this.setSelectionRoot(null); });
   }
 
   startDrag (mode, element) {
@@ -203,7 +204,12 @@ class Selection {
       }
       d3.event.stopPropagation();
       self.render();
-    }).on('mouseup', () => { this.finishDrag(); });
+    }).on('mouseup', () => { this.finishDrag(); })
+      .on('dblclick', function () {
+        self.setSelectionRoot(d3.select(this));
+        self.render();
+        d3.event.stopPropagation();
+      });
   }
 
   getHandles (boundingRect) {

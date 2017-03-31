@@ -7,10 +7,12 @@
   <body>
     <div id="container">
       <svg id="content" xmlns="http://www.w3.org/2000/svg" xmlns:svgDrawingTest="https://github.com/alex-r-bigelow/svg-drawing-test/blob/master/CustomNamespace.md">
-        <path d="M-100,-100L0,-50L100,-100Q0,200,-100,-100Z"
-              transform="translate(400, 400)"></path>
-        <path d="M-100,-100L0,-50L100,-100Q0,200,-100,-100Z"
-              transform="translate(600, 400) rotate(45, 0, 0)"></path>
+        <g transform="translate(200,200)">
+          <path d="M-100,-100L0,-50L100,-100Q0,200,-100,-100Z"
+                transform="translate(200, 200)"></path>
+          <path d="M-100,-100L0,-50L100,-100Q0,200,-100,-100Z"
+                transform="translate(400, 200) rotate(45, 0, 0)"></path>
+        </g>
       </svg>
       <svg id="selectionOverlay"></svg>
     </div>
