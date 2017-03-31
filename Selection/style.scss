@@ -1,17 +1,24 @@
 $selectionColor: #23c6d6;
 
-#handleLayer {
-  #boundingRect,
-  #anchorPoint,
-  .handle rect {
+#selectionOverlay {
+  pointer-events: none;
+  > * {
+    pointer-events: painted;
+  }
+
+  #rubberBand,
+  #anchorPoint {
+    fill: transparent;
     stroke: $selectionColor;
     stroke-width: 1px;
   }
-  #boundingRect {
-    fill: none;
+
+  #rubberBand {
+    pointer-events: none;
+    /* with pointer events enabled, the mouseup is never caught */
   }
+
   #anchorPoint {
-    fill: transparent;
     cursor: -webkit-grab;
     cursor: -moz-grab;
     cursor: grab;
@@ -21,75 +28,86 @@ $selectionColor: #23c6d6;
       cursor: grabbing;
     }
   }
-  .handle {
-    rect {
-      fill: white;
+
+  #handleLayer {
+    #boundingRect,
+    .handle rect {
+      stroke: $selectionColor;
+      stroke-width: 1px;
     }
-    circle {
-      fill: transparent;
+    #boundingRect {
+      fill: none;
     }
-    &.nw {
+    .handle {
       rect {
-        cursor: nwse-resize;
+        fill: white;
       }
       circle {
-        cursor: url('../img/nw-rotate.png') 12 12, nesw-resize;
+        fill: transparent;
       }
-    }
-    &.n {
-      rect {
-        cursor: ns-resize;
+      &.nw {
+        rect {
+          cursor: nwse-resize;
+        }
+        circle {
+          cursor: url('../img/nw-rotate.png') 12 12, nesw-resize;
+        }
       }
-      circle {
-        cursor: url('../img/n-rotate.png') 14 14, ew-resize;
+      &.n {
+        rect {
+          cursor: ns-resize;
+        }
+        circle {
+          cursor: url('../img/n-rotate.png') 14 14, ew-resize;
+        }
       }
-    }
-    &.ne {
-      rect {
-        cursor: nesw-resize;
+      &.ne {
+        rect {
+          cursor: nesw-resize;
+        }
+        circle {
+          cursor: url('../img/ne-rotate.png') 12 12, nwse-resize;
+        }
       }
-      circle {
-        cursor: url('../img/ne-rotate.png') 12 12, nwse-resize;
+      &.e {
+        rect {
+          cursor: ew-resize;
+        }
+        circle {
+          cursor: url('../img/e-rotate.png') 14 14, ns-resize;
+        }
       }
-    }
-    &.e {
-      rect {
-        cursor: ew-resize;
+      &.sw {
+        rect {
+          cursor: nesw-resize;
+        }
+        circle {
+          cursor: url('../img/sw-rotate.png') 12 12, nwse-resize;
+        }
       }
-      circle {
-        cursor: url('../img/e-rotate.png') 14 14, ns-resize;
+      &.s {
+        rect {
+          cursor: ns-resize;
+        }
+        circle {
+          cursor: url('../img/s-rotate.png') 14 14, ew-resize;
+        }
       }
-    }
-    &.sw {
-      rect {
-        cursor: nesw-resize;
+      &.se {
+        rect {
+          cursor: nwse-resize;
+        }
+        circle {
+          cursor: url('../img/se-rotate.png') 12 12, nesw-resize;
+        }
       }
-      circle {
-        cursor: url('../img/sw-rotate.png') 12 12, nwse-resize;
-      }
-    }
-    &.s {
-      rect {
-        cursor: ns-resize;
-      }
-      circle {
-        cursor: url('../img/s-rotate.png') 14 14, ew-resize;
-      }
-    }
-    &.se {
-      rect {
-        cursor: nwse-resize;
-      }
-      circle {
-        cursor: url('../img/se-rotate.png') 12 12, nesw-resize;
-      }
-    }
-    &.w {
-      rect {
-        cursor: ew-resize;
-      }
-      circle {
-        cursor: url('../img/w-rotate.png') 14 14, ns-resize;
+      &.w {
+        rect {
+          cursor: ew-resize;
+        }
+        circle {
+          cursor: url('../img/w-rotate.png') 14 14, ns-resize;
+        }
       }
     }
   }

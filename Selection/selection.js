@@ -3,6 +3,7 @@ import Underscore from 'underscore';
 
 import SvgUtils from '../SvgUtils/svgUtils.js';
 
+import template from './template.svg';
 import './style.scss';
 
 let HANDLE_RADIUS = 5;
@@ -19,6 +20,7 @@ let DRAG_MODES = {
 
 class Selection {
   constructor () {
+    d3.select('#selectionOverlay').html(template);
     this.setupGlobalEventHandlers();
     this.setSelectionRoot(null);
   }
@@ -80,7 +82,7 @@ class Selection {
   setSelection (elements) {
     this.selectedElements = elements;
     this.selectedKeyElement = null;
-    this.cachedAnchor = null;
+    this.tempAnchorPoint = null;
   }
 
   toggleElementInSelection (element) {
@@ -95,8 +97,17 @@ class Selection {
   }
 
   selectRubberBand () {
-    // TODO: select or toggle everything that intersected with the
-    // rubber band
+    let contentSvg = d3.select('svg#content').node();
+    let rubberBandRect = contentSvg.createSVGRect();
+    let rubberBandAttrs = this.getRubberBandRect();
+    rubberBandRect.x = rubberBandAttrs.x;
+    rubberBandRect.y = rubberBandAttrs.y;
+    rubberBandRect.width = rubberBandAttrs.width;
+    rubberBandRect.height = rubberBandAttrs.height;
+    let intersectingElements = this.d3selectables.nodes().filter((element) => {
+      return contentSvg.checkIntersection(element, rubberBandRect);
+    });
+    this.setSelection(intersectingElements);
   }
 
   applyTranslation () {
@@ -112,14 +123,14 @@ class Selection {
   }
 
   moveAnchor () {
-    if (this.cachedAnchor) {
+    if (this.tempAnchorPoint) {
       /*
         We're moving the anchor for a list of elements; we don't want changes
         to temporary selections to be stored in the DOM. Just update the
         temporary anchor:
       */
-      this.cachedAnchor.x += this.drag.x - this.drag.x0;
-      this.cachedAnchor.y += this.drag.y - this.drag.y0;
+      this.tempAnchorPoint.x += this.drag.x - this.drag.x0;
+      this.tempAnchorPoint.y += this.drag.y - this.drag.y0;
     } else {
       /*
         Math for moving the anchor point for a single element:
@@ -250,101 +261,158 @@ class Selection {
     ];
   }
 
-  render () {
-    Underscore.throttle(() => {
-      let handleLayer = d3.select('svg#handleLayer');
+  renderHandles () {
+    let handleLayer = d3.select('#handleLayer')
+      .style('display', null);
 
-      if (this.selectedElements.length === 0) {
-        handleLayer.style('display', 'none');
+    // Update the bounding rectangle
+    let boundingRect = SvgUtils.getBoundingRect(this.selectedElements);
+    handleLayer.select('#boundingRect')
+      .attrs({
+        x: boundingRect.left,
+        y: boundingRect.top,
+        width: boundingRect.width,
+        height: boundingRect.height
+      });
+
+    // Draw the handles
+    let handles = handleLayer.select('#handles').selectAll('.handle')
+      .data(this.getHandles(boundingRect), d => d.class);
+    handles.exit().remove();
+    let handlesEnter = handles.enter().append('g')
+      .attr('class', d => d.class + ' handle');
+    handlesEnter.append('circle');
+    handlesEnter.append('rect');
+    handles = handlesEnter.merge(handles);
+
+    handles.select('rect')
+      .attr('x', d => d.x - HANDLE_RADIUS)
+      .attr('y', d => d.y - HANDLE_RADIUS)
+      .attr('width', HANDLE_RADIUS * 2)
+      .attr('height', HANDLE_RADIUS * 2)
+      .style('cursor', d => d.resizeCursor)
+      .on('mousedown', d => {
+        this.startDrag(DRAG_MODES.SCALE);
+        d3.event.stopPropagation();
+        this.render();
+      });
+    handles.select('circle')
+      .attr('cx', d => d.x + d.offset_x)
+      .attr('cy', d => d.y + d.offset_y)
+      .attr('r', OUTER_HANDLE_RADIUS)
+      .on('mousedown', d => {
+        this.startDrag(DRAG_MODES.ROTATE);
+        d3.event.stopPropagation();
+        this.render();
+      }).on('mouseup', () => { this.finishDrag(); });
+
+    return boundingRect;
+  }
+
+  renderAnchorPoint () {
+    let anchorTransform = null;
+    if (this.tempAnchorPoint) {
+      anchorTransform = 'translate(' + this.tempAnchorPoint.x + ',' + this.tempAnchorPoint.y + ')';
+    } else {
+      /*
+        Math involved in computing the anchor point's position
+        in global coordinates:
+
+        P = consolidated ancestral transformations
+        B = pre-anchor transform
+      */
+      let element = this.selectedElements[0];
+      let P = SvgUtils.getAncestralMatrix(element);
+      let B = SvgUtils.getPreAnchorMatrix(element);
+      let anchor = SvgUtils.transformPoint(SvgUtils.multiplyMatrix(P, B), { x: 0, y: 0 });
+
+      anchorTransform = 'translate(' + anchor.x + ',' + anchor.y + ')';
+      this.tempAnchorPoint = null;
+    }
+
+    if (this.drag.mode === DRAG_MODES.MOVE_ANCHOR) {
+      // tack on the current (temporary) drag interaction
+      anchorTransform += ' translate(' + (this.drag.x - this.drag.x0) +
+                                   ',' + (this.drag.y - this.drag.y0) + ')';
+    }
+    d3.select('#anchorPoint')
+      .style('display', null)
+      .attr('transform', anchorTransform)
+      .on('mousedown', d => {
+        this.startDrag(DRAG_MODES.MOVE_ANCHOR);
+        d3.event.stopPropagation();
+        this.render();
+      }).on('mouseup', () => { this.finishDrag(); });
+  }
+
+  getRubberBandRect () {
+    // Pick the rect values (SVG doesn't allow negative width / height)
+    let attrs = {};
+    if (this.drag.x0 <= this.drag.x) {
+      attrs.x = this.drag.x0;
+      attrs.width = this.drag.x - this.drag.x0;
+    } else {
+      attrs.x = this.drag.x;
+      attrs.width = this.drag.x0 - this.drag.x;
+    }
+    if (this.drag.y0 <= this.drag.y) {
+      attrs.y = this.drag.y0;
+      attrs.height = this.drag.y - this.drag.y0;
+    } else {
+      attrs.y = this.drag.y;
+      attrs.height = this.drag.y0 - this.drag.y;
+    }
+
+    return attrs;
+  }
+
+  renderRubberBand () {
+    d3.select('#rubberBand').attrs(this.getRubberBandRect())
+      .style('display', null);
+  }
+
+  _render () {
+    if (this.selectedElements.length === 0) {
+      this.tempAnchorPoint = null;
+      d3.selectAll('#handleLayer, #anchorPoint').style('display', 'none');
+    } else {
+      let boundingRect = this.renderHandles();
+
+      if (this.selectedElements.length === 1) {
+        this.tempAnchorPoint = null;
       } else {
-        handleLayer.style('display', null);
-
-        // Update the bounding rectangle
-        let boundingRect = SvgUtils.getBoundingRect(this.selectedElements);
-        handleLayer.select('#boundingRect')
-          .attrs({
-            x: boundingRect.left,
-            y: boundingRect.top,
-            width: boundingRect.width,
-            height: boundingRect.height
-          });
-
-        // Draw the handles
-        let handles = handleLayer.select('#handles').selectAll('.handle')
-          .data(this.getHandles(boundingRect), d => d.class);
-        handles.exit().remove();
-        let handlesEnter = handles.enter().append('g')
-          .attr('class', d => d.class + ' handle');
-        handlesEnter.append('circle');
-        handlesEnter.append('rect');
-        handles = handlesEnter.merge(handles);
-
-        handles.select('rect')
-          .attr('x', d => d.x - HANDLE_RADIUS)
-          .attr('y', d => d.y - HANDLE_RADIUS)
-          .attr('width', HANDLE_RADIUS * 2)
-          .attr('height', HANDLE_RADIUS * 2)
-          .style('cursor', d => d.resizeCursor)
-          .on('mousedown', d => {
-            this.startDrag(DRAG_MODES.SCALE);
-            d3.event.stopPropagation();
-            this.render();
-          });
-        handles.select('circle')
-          .attr('cx', d => d.x + d.offset_x)
-          .attr('cy', d => d.y + d.offset_y)
-          .attr('r', OUTER_HANDLE_RADIUS)
-          .on('mousedown', d => {
-            this.startDrag(DRAG_MODES.ROTATE);
-            d3.event.stopPropagation();
-            this.render();
-          }).on('mouseup', () => { this.finishDrag(); });
-
-        // Draw the anchor point
-        let anchorTransform = null;
-        if (this.selectedElements.length === 1) {
-          /*
-            Math involved in computing the anchor point's position
-            in global coordinates:
-
-            P = consolidated ancestral transformations
-            B = pre-anchor transform
-          */
-          let element = this.selectedElements[0];
-          let P = SvgUtils.getAncestralMatrix(element);
-          let B = SvgUtils.getPreAnchorMatrix(element);
-          let anchor = SvgUtils.transformPoint(SvgUtils.multiplyMatrix(P, B), { x: 0, y: 0 });
-
-          anchorTransform = 'translate(' + anchor.x + ',' + anchor.y + ')';
-          this.cachedAnchor = null;
-        } else if (this.selectedElements.length > 1) {
-          // There isn't an implicit coordinate system when multiple objects are
-          // selected; instead start in the middle of the selection, and cache
-          // the result until the selection is changed - then the anchor will be
-          // lost
-          if (!this.cachedAnchor) {
-            this.cachedAnchor = {
-              x: boundingRect.left + boundingRect.width / 2,
-              y: boundingRect.top + boundingRect.height / 2
-            };
-          }
-          anchorTransform = 'translate(' + this.cachedAnchor.x + ',' + this.cachedAnchor.y + ')';
+        // There isn't an implicit coordinate system when multiple objects are
+        // selected; instead start in the middle of the selection, and cache
+        // the result until the selection is changed - then the anchor will be
+        // lost
+        if (!this.tempAnchorPoint) {
+          this.tempAnchorPoint = {
+            x: boundingRect.left + boundingRect.width / 2,
+            y: boundingRect.top + boundingRect.height / 2
+          };
         }
-
-        if (this.drag.mode === DRAG_MODES.MOVE_ANCHOR) {
-          // tack on the current (temporary) drag interaction
-          anchorTransform += ' translate(' + (this.drag.x - this.drag.x0) +
-                                       ',' + (this.drag.y - this.drag.y0) + ')';
-        }
-        handleLayer.select('#anchorPoint')
-          .attr('transform', anchorTransform)
-          .on('mousedown', d => {
-            this.startDrag(DRAG_MODES.MOVE_ANCHOR);
-            d3.event.stopPropagation();
-            this.render();
-          }).on('mouseup', () => { this.finishDrag(); });
       }
+
+      this.renderAnchorPoint();
+    }
+
+    if (this.drag.mode === DRAG_MODES.RUBBER_BAND) {
+      this.renderRubberBand();
+    } else {
+      d3.select('#rubberBand').style('display', 'none');
+    }
+  }
+
+  render () {
+    // We want to throttle AND debounce, to show
+    // live updates, but also make sure the last
+    // call makes it through
+    Underscore.throttle(() => {
+      this._render();
     }, 25)();
+    Underscore.debounce(() => {
+      this._render();
+    }, 500);
   }
 }
 

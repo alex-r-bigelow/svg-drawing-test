@@ -9,11 +9,4 @@ svg {
   position: absolute;
   top: 0px;
   left: 0px;
-  &#outlineLayer,
-  &#handleLayer {
-    pointer-events: none;
-    > * {
-      pointer-events: painted;
-    }
-  }
 }
