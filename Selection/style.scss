@@ -1,8 +1,10 @@
-#overlay {
+$selectionColor: #23c6d6;
+
+#handleLayer {
   #boundingRect,
   #anchorPoint,
   .handle rect {
-    stroke: #23c6d6;
+    stroke: $selectionColor;
     stroke-width: 1px;
   }
   #boundingRect {

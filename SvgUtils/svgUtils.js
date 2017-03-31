@@ -3,7 +3,7 @@ import '../node_modules/path-data-polyfill.js/path-data-polyfill.js';
 
 const A_TO_F = ['a', 'b', 'c', 'd', 'e', 'f'];
 const IDENTITY_MATRIX = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
-const DATA_RULER_NAMESPACE = 'https://alex-r-bigelow.github.io/#dataRuler';
+const DATA_RULER_NAMESPACE = 'https://github.com/alex-r-bigelow/svg-drawing-test/blob/master/CustomNamespace.md';
 
 function transformPoint (matrix, point) {
   return {

@@ -252,16 +252,16 @@ class Selection {
 
   render () {
     Underscore.throttle(() => {
-      let overlay = d3.select('svg#overlay');
+      let handleLayer = d3.select('svg#handleLayer');
 
       if (this.selectedElements.length === 0) {
-        overlay.style('display', 'none');
+        handleLayer.style('display', 'none');
       } else {
-        overlay.style('display', null);
+        handleLayer.style('display', null);
 
         // Update the bounding rectangle
         let boundingRect = SvgUtils.getBoundingRect(this.selectedElements);
-        overlay.select('#boundingRect')
+        handleLayer.select('#boundingRect')
           .attrs({
             x: boundingRect.left,
             y: boundingRect.top,
@@ -270,7 +270,7 @@ class Selection {
           });
 
         // Draw the handles
-        let handles = overlay.select('#handles').selectAll('.handle')
+        let handles = handleLayer.select('#handles').selectAll('.handle')
           .data(this.getHandles(boundingRect), d => d.class);
         handles.exit().remove();
         let handlesEnter = handles.enter().append('g')
@@ -336,7 +336,7 @@ class Selection {
           anchorTransform += ' translate(' + (this.drag.x - this.drag.x0) +
                                        ',' + (this.drag.y - this.drag.y0) + ')';
         }
-        overlay.select('#anchorPoint')
+        handleLayer.select('#anchorPoint')
           .attr('transform', anchorTransform)
           .on('mousedown', d => {
             this.startDrag(DRAG_MODES.MOVE_ANCHOR);
@@ -344,7 +344,7 @@ class Selection {
             this.render();
           }).on('mouseup', () => { this.finishDrag(); });
       }
-    }, 50)();
+    }, 25)();
   }
 }
 

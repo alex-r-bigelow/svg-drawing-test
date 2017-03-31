@@ -9,8 +9,8 @@ svg {
   position: absolute;
   top: 0px;
   left: 0px;
-  &#anchorPoints,
-  &#overlay {
+  &#outlineLayer,
+  &#handleLayer {
     pointer-events: none;
     > * {
       pointer-events: painted;
