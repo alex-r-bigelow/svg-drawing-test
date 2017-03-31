@@ -38,6 +38,11 @@ class Selection {
       })
       .on('mousemove', () => {
         if (this.drag.mode !== DRAG_MODES.INACTIVE) {
+          // All dragging interactions should hide the cursor once they've
+          // started (some other visual element like the rubber band or selected
+          // outlines will indicate what's going on... and we want the cursor
+          // out of the way)
+          d3.select('#container').classed('nocursor', true);
           this.drag.x = d3.mouse(this.drag.element.parentElement)[0];
           this.drag.y = d3.mouse(this.drag.element.parentElement)[1];
         }
@@ -72,6 +77,7 @@ class Selection {
       this.moveAnchor();
     }
     this.drag = { mode: DRAG_MODES.INACTIVE };
+    d3.select('#container').classed('nocursor', false);
     this.render();
   }
 
@@ -336,13 +342,14 @@ class Selection {
                                    ',' + (this.drag.y - this.drag.y0) + ')';
     }
     d3.select('#anchorPoint')
-      .style('display', null)
+      .classed('dragging', this.drag.mode !== DRAG_MODES.INACTIVE)
       .attr('transform', anchorTransform)
       .on('mousedown', d => {
         this.startDrag(DRAG_MODES.MOVE_ANCHOR);
         d3.event.stopPropagation();
         this.render();
-      }).on('mouseup', () => { this.finishDrag(); });
+      }).on('mouseup', () => { this.finishDrag(); })
+      .style('display', null);
   }
 
   getRubberBandRect () {
@@ -404,9 +411,8 @@ class Selection {
   }
 
   render () {
-    // We want to throttle AND debounce, to show
-    // live updates, but also make sure the last
-    // call makes it through
+    // We want to throttle AND debounce, to show / control live updates, but
+    // also make sure the last call makes it through
     Underscore.throttle(() => {
       this._render();
     }, 25)();

@@ -23,9 +23,7 @@ $selectionColor: #23c6d6;
     cursor: -moz-grab;
     cursor: grab;
     &.dragging {
-      cursor: -webkit-grabbing;
-      cursor: -moz-grabbing;
-      cursor: grabbing;
+      cursor: none;
     }
   }
 
@@ -58,7 +56,7 @@ $selectionColor: #23c6d6;
           cursor: ns-resize;
         }
         circle {
-          cursor: url('../img/n-rotate.png') 14 14, ew-resize;
+          cursor: url('../img/n-rotate.png') 14 9, ew-resize;
         }
       }
       &.ne {
@@ -74,7 +72,7 @@ $selectionColor: #23c6d6;
           cursor: ew-resize;
         }
         circle {
-          cursor: url('../img/e-rotate.png') 14 14, ns-resize;
+          cursor: url('../img/e-rotate.png') 9 14, ns-resize;
         }
       }
       &.sw {
@@ -90,7 +88,7 @@ $selectionColor: #23c6d6;
           cursor: ns-resize;
         }
         circle {
-          cursor: url('../img/s-rotate.png') 14 14, ew-resize;
+          cursor: url('../img/s-rotate.png') 14 9, ew-resize;
         }
       }
       &.se {
@@ -106,7 +104,7 @@ $selectionColor: #23c6d6;
           cursor: ew-resize;
         }
         circle {
-          cursor: url('../img/w-rotate.png') 14 14, ns-resize;
+          cursor: url('../img/w-rotate.png') 9 14, ns-resize;
         }
       }
     }
