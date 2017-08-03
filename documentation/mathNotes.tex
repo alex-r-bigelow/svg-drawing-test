@@ -1,0 +1,116 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsmath}
+
+\begin{document}
+
+\section{Variable definitions}
+
+\begin{itemize}
+\item $P=$ (consolidated) ancestral transformation matrix
+\item $T=$ current element's transformation matrix (derived from its \texttt{transform} tag)
+\item $B=$ the matrix that describes how to get from the parent to the element's anchor point (stored in a custom \texttt{svgDrawingTest:preAnchorMatrix} attribute)
+\item $A=$ the matrix that describes how to get from the anchor point to the element's coordinate system (stored in a custom \texttt{svgDrawingTest:postAnchorMatrix} attribute)
+\item $C=$ the matrix that describes the outline layer (when items are selected and we start to manipulate them, we hide the cursor and move the outlines instead... but these outlines are put on a different layer in the global coordinate system)
+\item $G=$ the global transformation matrix created by user interaction
+\item $M=$ the local (i.e. relative to the anchor point) version of $G$ \textbf{or} the local (i.e. relative to the parent coordinate system) transformation of the anchor point itself
+\item $\vec a=$ the anchor point (in global coordinates)
+\item $\vec d=$ the user's dragging interaction (in global coordinates)
+\end{itemize}
+
+\section{Properties}
+
+In general, the following properties should hold:
+\begin{align}
+ T &= B * A \\
+ a &= P * B * <0,0> \\
+ G &= P * B * M
+\end{align}
+
+However, when moving the anchor point instead of the element:
+\begin{align}
+ G &= P * M
+\end{align}
+
+
+\section{How to calculate stuff}
+
+\subsection{Manipulation matrix}
+
+To calculate the global manipulation matrix $G$:
+\begin{itemize}
+  \item Translation
+    \begin{align}
+      G &= \begin{bmatrix}
+        1 & 0 & \vec d_x\\
+        0 & 1 & \vec d_y\\
+        0 & 0 & 1
+      \end{bmatrix}
+    \end{align}
+  \item Rotation
+    \begin{align}
+      \vec t_0 &= \vec d_0 - \vec a \\
+      \vec t_1 &= \vec d_1 - \vec a \\
+      \theta &= \arccos(\frac{t_0 \cdot t_0}{|t_0||t_1|}) \\
+      G &= \begin{bmatrix}
+        1 & 0 & \vec a_x\\
+        0 & 1 & \vec a_y\\
+        0 & 0 & 1
+      \end{bmatrix} \times
+      \begin{bmatrix}
+        \cos(\theta) & -\sin(\theta) & 0\\
+        \sin(\theta) & \cos(\theta) & 0\\
+        0 & 0 & 1
+      \end{bmatrix} \times
+      \begin{bmatrix}
+        1 & 0 & -\vec a_x\\
+        0 & 1 & -\vec a_y\\
+        0 & 0 & 1
+      \end{bmatrix}
+    \end{align}
+  \item Scaling
+    \begin{align}
+      \vec t_0 &= \vec d_0 - \vec a \\
+      \vec t_1 &= \vec d_1 - \vec a \\
+      \vec s &= <\frac{t_1_x}{t_0_x},\frac{t_1_y}{t_0_y}> \\
+      G &= \begin{bmatrix}
+        1 & 0 & \vec a_x\\
+        0 & 1 & \vec a_y\\
+        0 & 0 & 1
+      \end{bmatrix} \times
+      \begin{bmatrix}
+        \vec s_x & 0 & 0\\
+        0 & \vec s_y & 0\\
+        0 & 0 & 1
+      \end{bmatrix} \times
+      \begin{bmatrix}
+        1 & 0 & -\vec a_x\\
+        0 & 1 & -\vec a_y\\
+        0 & 0 & 1
+      \end{bmatrix}
+    \end{align}
+\end{itemize}
+
+\subsection{Applying manipulations}
+
+When $G$ needs to be applied to the element, our goal is to update $A$ and $T$.
+\begin{align}
+  M &= (P \times B)^{-1} \times G \\
+  A_1 &= M \times A_0 \\
+  T_1 &= B \times A_1
+\end{align}
+
+When $G$ needs to be applied to the outline layer, our goal is to calculate / update $C$.
+\begin{align}
+  M &= (P \times B)^{-1} \times G \\
+  C &= P \times M \times A
+\end{align}
+
+When $G$ needs to be applied to the element's anchor point, we want to update $A$ and $B$ \emph{without} modifying $T$.
+\begin{align}
+  M &= P^{-1} \times G \\
+  B_1 &= M \times B_0 \\
+  A_1 &= B_1^{-1} \times T
+\end{align}
+
+\end{document}

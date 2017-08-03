@@ -27,6 +27,15 @@ $selectionColor: #23c6d6;
     }
   }
 
+  #outlineLayer {
+    pointer-events: none;
+    * {
+      fill: none;
+      stroke: $selectionColor;
+      stroke-width: 1px;
+    }
+  }
+
   #handleLayer {
     #boundingRect,
     .handle rect {

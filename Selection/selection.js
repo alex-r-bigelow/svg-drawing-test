@@ -63,22 +63,26 @@ class Selection {
       x: mouse[0],
       y: mouse[1]
     };
+    if (this.drag.mode === DRAG_MODES.TRANSLATE ||
+        this.drag.mode === DRAG_MODES.ROTATE ||
+        this.drag.mode === DRAG_MODES.SCALE) {
+      this.initOutlines();
+    }
   }
 
   finishDrag () {
     if (this.drag.mode === DRAG_MODES.RUBBER_BAND) {
       this.selectRubberBand();
-    } else if (this.drag.mode === DRAG_MODES.TRANSLATE) {
-      this.applyTranslation();
-    } else if (this.drag.mode === DRAG_MODES.ROTATE) {
-      this.applyRotation();
-    } else if (this.drag.mode === DRAG_MODES.SCALE) {
-      this.applyScale();
+    } else if (this.drag.mode === DRAG_MODES.TRANSLATE ||
+               this.drag.mode === DRAG_MODES.ROTATE ||
+               this.drag.mode === DRAG_MODES.SCALE) {
+      this.applyTransformation();
     } else if (this.drag.mode === DRAG_MODES.MOVE_ANCHOR) {
       this.moveAnchor();
     }
     this.drag = { mode: DRAG_MODES.INACTIVE };
     d3.select('#container').classed('nocursor', false);
+    d3.select('#outlineLayer').html('');
     this.render();
   }
 
@@ -117,16 +121,79 @@ class Selection {
     this.setSelection(intersectingElements);
   }
 
-  applyTranslation () {
+  applyTransformation () {
+    /*
+      Math for applying the transformation to the selected element(s):
+      see documentation/mathNotes.pdf, eqns 12 - 14
+    */
+    let G = this.getDraggedMatrix();
+    this.selectedElements.forEach(element => {
+      let P = SvgUtils.getAncestralMatrix(element);
+      let B = SvgUtils.getPreAnchorMatrix(element);
+      let M = SvgUtils.multiplyMatrix(
+        SvgUtils.invertMatrix(SvgUtils.multiplyMatrix(P, B)),
+        G);
+      let A_0 = SvgUtils.getPostAnchorMatrix(element);
+      let A_1 = SvgUtils.multiplyMatrix(M, A_0);
+      let T_1 = SvgUtils.multiplyMatrix(B, A_1);
 
+      SvgUtils.setPostAnchorMatrix(element, A_1);
+      SvgUtils.setMatrix(element, T_1);
+    });
   }
 
-  applyRotation () {
+  getDraggedMatrix () {
+    if (this.drag.mode === DRAG_MODES.TRANSLATE) {
+      /*
+        Math for applying the transformation to the selected element(s):
+        see documentation/mathNotes.pdf, eqn 5
+      */
+      return SvgUtils.getTranslationMatrix(
+        this.drag.x - this.drag.x0,
+        this.drag.y - this.drag.y0);
+    } else {
+      /*
+        Common things we need to calculate for both rotation and scaling:
+      */
+      let a = this.tempAnchorPoint;
+      if (!a) {
+        let element = this.selectedElements[0];
+        let P = SvgUtils.getAncestralMatrix(element);
+        let B = SvgUtils.getPreAnchorMatrix(element);
+        a = SvgUtils.transformPoint(SvgUtils.multiplyMatrix(P, B), { x: 0, y: 0 });
+      }
+      let t0 = { x: this.drag.x0 - a.x, y: this.drag.y0 - a.y };
+      let t1 = { x: this.drag.x - a.x, y: this.drag.y - a.y };
 
-  }
-
-  applyScale () {
-
+      if (this.drag.mode === DRAG_MODES.ROTATE) {
+        /*
+          Math for calculating the rotation matrix:
+          see documentation/mathNotes.pdf, eqns 6-9
+        */
+        let theta = Math.acos(SvgUtils.dotProduct(t0, t1) /
+          (SvgUtils.vectorLength(t0) * SvgUtils.vectorLength(t1)));
+        let M = [
+          SvgUtils.getTranslationMatrix(a.x, a.y),
+          SvgUtils.getRotationMatrix(theta),
+          SvgUtils.getTranslationMatrix(-a.x, -a.y)
+        ].reduce(SvgUtils.multiplyMatrix, SvgUtils.IDENTITY_MATRIX);
+        return M;
+      } else if (this.drag.mode === DRAG_MODES.SCALE) {
+        /*
+          Math for calculating the rotation matrix:
+          see documentation/mathNotes.pdf, eqns 6-9
+        */
+        let s = { x: t0.x === 0 ? 1 : t1.x / t0.x, y: t0.y === 0 ? 1 : t1.y / t0.y };
+        let M = [
+          SvgUtils.getTranslationMatrix(a.x, a.y),
+          SvgUtils.getScaleMatrix(s.x, s.y),
+          SvgUtils.getTranslationMatrix(-a.x, -a.y)
+        ].reduce(SvgUtils.multiplyMatrix, SvgUtils.IDENTITY_MATRIX);
+        return M;
+      } else {
+        throw new Error('Tried to get a dragged matrix in a non-transformation mode.');
+      }
+    }
   }
 
   moveAnchor () {
@@ -134,29 +201,24 @@ class Selection {
       /*
         We're moving the anchor for a list of elements; we don't want changes
         to temporary selections to be stored in the DOM. Just update the
-        temporary anchor:
+        temporary anchor (that's already in global coordinates):
       */
       this.tempAnchorPoint.x += this.drag.x - this.drag.x0;
       this.tempAnchorPoint.y += this.drag.y - this.drag.y0;
     } else {
       /*
         Math for moving the anchor point for a single element:
-
-        M = anchor movement transformation (what we got from dragging)
-        B = pre-anchor transform (need to update)
-        A = post-anchor transform (need to update)
-        T = element's native transform
-
-        B_1 = M * B_0
-        A_1 = inv(B_1) * T
+        see documentation/mathNotes.pdf, eqns 19-21
       */
       let element = this.selectedElements[0];
-      let M = SvgUtils.getTranslationMatrix(
+      let P = SvgUtils.getAncestralMatrix(element);
+      let G = SvgUtils.getTranslationMatrix(
         (this.drag.x - this.drag.x0),
         (this.drag.y - this.drag.y0));
       let B_0 = SvgUtils.getPreAnchorMatrix(element);
       let T = SvgUtils.getMatrix(element);
 
+      let M = SvgUtils.multiplyMatrix(SvgUtils.invertMatrix(P), G);
       let B_1 = SvgUtils.multiplyMatrix(M, B_0);
       let A_1 = SvgUtils.multiplyMatrix(SvgUtils.invertMatrix(B_1), T);
 
@@ -210,6 +272,19 @@ class Selection {
         self.render();
         d3.event.stopPropagation();
       });
+  }
+
+  initOutlines () {
+    let clonehtml = '';
+    this.selectedElements.forEach(element => {
+      clonehtml += element.outerHTML;
+    });
+    d3.select('#outlineLayer').html(clonehtml);
+  }
+
+  renderOutlines () {
+    let outlineElements = d3.selectAll(d3.select('#outlineLayer').node().children);
+    let M = this.getDraggedMatrix();
   }
 
   getHandles (boundingRect) {
@@ -332,6 +407,9 @@ class Selection {
 
         P = consolidated ancestral transformations
         B = pre-anchor transform
+        anchor = the element's anchor point
+
+        anchor = P * B * <0, 0>
       */
       let element = this.selectedElements[0];
       let P = SvgUtils.getAncestralMatrix(element);
@@ -407,6 +485,7 @@ class Selection {
       }
 
       this.renderAnchorPoint();
+      this.renderOutlines();
     }
 
     if (this.drag.mode === DRAG_MODES.RUBBER_BAND) {

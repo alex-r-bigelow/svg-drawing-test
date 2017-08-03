@@ -5,6 +5,14 @@ const A_TO_F = ['a', 'b', 'c', 'd', 'e', 'f'];
 const IDENTITY_MATRIX = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
 const DATA_RULER_NAMESPACE = 'https://github.com/alex-r-bigelow/svg-drawing-test/blob/master/CustomNamespace.md';
 
+function vectorLength (point) {
+  return Math.sqrt(point.x * point.x + point.y * point.y);
+}
+
+function dotProduct (a, b) {
+  return a.x * b.x + a.y * b.y;
+}
+
 function transformPoint (matrix, point) {
   return {
     x: matrix.a * point.x + matrix.c * point.y + matrix.e,
@@ -41,6 +49,14 @@ function invertMatrix (m) {
 
 function getTranslationMatrix (dx, dy) {
   return { a: 1, b: 0, c: 0, d: 1, e: dx, f: dy };
+}
+
+function getRotationMatrix (theta) {
+  return { a: Math.cos(theta), b: Math.sin(theta), c: -Math.sin(theta), d: Math.cos(theta), e: 0, f: 0 };
+}
+
+function getScaleMatrix (sx, sy) {
+  return { a: sx, b: sy, c: 0, d: 1, e: 0, f: 0 };
 }
 
 function getAncestralMatrix (element) {
@@ -206,10 +222,14 @@ function getCorners (bounds) {
 
 export default {
   IDENTITY_MATRIX,
+  vectorLength,
+  dotProduct,
   transformPoint,
   multiplyMatrix,
   invertMatrix,
   getTranslationMatrix,
+  getRotationMatrix,
+  getScaleMatrix,
   getAncestralMatrix,
   getMatrix,
   setMatrix,
